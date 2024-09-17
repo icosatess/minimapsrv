@@ -7,7 +7,9 @@ import (
 	"net/http"
 )
 
-var activeComponent string = "server"
+// activeComponent describes which component (VS Code workspace folder) is
+// currently active. Empty string means no component is active.
+var activeComponent string
 
 func updateActiveComponent(w http.ResponseWriter, r *http.Request) {
 	bs, bserr := io.ReadAll(r.Body)
@@ -22,8 +24,14 @@ func root(w http.ResponseWriter, r *http.Request) {
 	if terr != nil {
 		panic(terr)
 	}
+
+	var componentString string
+	if activeComponent != "" {
+		componentString = "minimap-" + activeComponent
+	}
+
 	t.Execute(w, struct{ Component string }{
-		Component: "minimap-" + activeComponent,
+		Component: componentString,
 	})
 }
 
