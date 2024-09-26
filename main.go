@@ -40,6 +40,7 @@ func main() {
 	http.Handle("/public/", http.FileServer(http.Dir(`C:\Users\Icosatess\Source\minimapui`)))
 	http.HandleFunc("/", root)
 
-	log.Printf("Starting static file server at 127.0.0.1:8080")
-	log.Fatal(http.ListenAndServe("127.0.0.1:8080", nil))
+	srvAddr := "127.0.0.1:8081"
+	log.Printf("Starting minimap server at %s", srvAddr)
+	log.Fatal(http.ListenAndServe(srvAddr, nil))
 }
