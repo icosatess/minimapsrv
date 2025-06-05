@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"html/template"
 	"io"
 	"log"
@@ -21,11 +22,21 @@ type activeComponentUpdate struct {
 func updateActiveComponent(w http.ResponseWriter, r *http.Request) {
 	bs, bserr := io.ReadAll(r.Body)
 	if bserr != nil {
-		panic(bserr)
+		log.Printf("unexpected error updating active component while reading request body: %v", bserr)
+		// Treat read errors as network errors.
+		http.Error(w, "Failed to read request", http.StatusBadRequest)
+		return
 	}
 	var update activeComponentUpdate
-	if err := json.Unmarshal(bs, &update); err != nil {
-		panic(err)
+	var syntaxError *json.SyntaxError
+	if err := json.Unmarshal(bs, &update); errors.As(err, &syntaxError) {
+		http.Error(w, "request body is not valid JSON", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		log.Printf("unexpected error unmarshaling request body while updating active component: %v", err)
+		// Treat other unmarshal errors similarly to syntax errors.
+		http.Error(w, "request body is not valid JSON", http.StatusBadRequest)
+		return
 	}
 	activeComponent = update.Component
 	relativePath = update.RelativePath
@@ -34,7 +45,10 @@ func updateActiveComponent(w http.ResponseWriter, r *http.Request) {
 func root(w http.ResponseWriter, r *http.Request) {
 	t, terr := template.ParseFiles(`C:\Users\Icosatess\Source\minimapui\index.html`)
 	if terr != nil {
-		panic(terr)
+		log.Printf("Failed to parse templates in root handler: %v", terr)
+		// The template was missing or invalid, probably.
+		http.Error(w, "Missing files to render minimap. See logs.", http.StatusInternalServerError)
+		return
 	}
 
 	var componentString string
@@ -53,10 +67,13 @@ func getActiveComponent(w http.ResponseWriter, r *http.Request) {
 		RelativePath: relativePath,
 	})
 	if bserr != nil {
-		panic(bserr)
+		log.Printf("Failed to marshal active component update: %v", bserr)
+		http.Error(w, "Couldn't generate active component update", http.StatusInternalServerError)
+		return
 	}
 	if _, err := w.Write(bs); err != nil {
-		panic(err)
+		log.Printf("Got error writing active component response, ignoring: %v", err)
+		return
 	}
 }
 
